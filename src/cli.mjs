@@ -231,7 +231,7 @@ export async function startInteractiveREPL() {
   const rl = readline.createInterface({
     input:  process.stdin,
     output: process.stdout,
-    prompt: promptString()
+    prompt: promptString(agent.getModel())
   });
 
   // ─────────────────────── COMMAND HANDLER ────────────────────────────────────
@@ -253,7 +253,7 @@ export async function startInteractiveREPL() {
     if (['clear', '/clear', 'cls'].includes(input)) {
       console.clear();
       printBanner(agent.getModel(), keyManager.keys.length, pluginLoader.getAll().length);
-      rl.setPrompt(promptString());
+      rl.setPrompt(promptString(agent.getModel()));
       rl.prompt();
       return;
     }
@@ -303,6 +303,7 @@ export async function startInteractiveREPL() {
       const name = input.replace(/^(?:\/model|model|-m|--model)\s*/, '').trim();
       if (name) {
         agent.setModel(name);
+        rl.setPrompt(promptString(agent.getModel()));
         logSuccess(`Model switched → ${c.bYellow}${name}${c.reset}`);
       } else {
         logInfo(`Active model: ${c.bYellow}${c.bold}${agent.getModel()}${c.reset}`);

@@ -54,57 +54,57 @@ export const colors = {
 };
 
 const isTTY = Boolean(process.stdout.isTTY && !process.env.CI);
-const cols  = () => Math.min(process.stdout.columns || 80, 100);
+export const cols = () => Math.max(Math.min(process.stdout.columns || 80, 100), 50);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GRADIENT TEXT  (cycles through cyan → magenta gradient per character)
-// ─────────────────────────────────────────────────────────────────────────────
-const GRAD = ['\x1b[96m', '\x1b[95m', '\x1b[94m', '\x1b[96m', '\x1b[93m'];
-function grad(text) {
-  return [...text].map((ch, i) => `${GRAD[i % GRAD.length]}${ch}`).join('') + c.reset;
+/**
+ * Strip ANSI escape codes to calculate true printable string width
+ */
+export function stripAnsi(str) {
+  return String(str || '').replace(/\x1b\[[0-9;]*m/g, '');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BANNER
 // ─────────────────────────────────────────────────────────────────────────────
-export function printBanner(modelName, keyCount, pluginCount) {
+export function printBanner(modelName = 'gemini-2.5-flash', keyCount = 1, pluginCount = 9) {
   if (!isTTY) return;
 
-  const hr  = `${c.bBlack}${'═'.repeat(cols())}${c.reset}`;
-  const hr2 = `${c.bBlack}${'─'.repeat(cols())}${c.reset}`;
+  const w = cols();
+  const hr  = `${c.bBlack}${'═'.repeat(w)}${c.reset}`;
+  const hr2 = `${c.bBlack}${'─'.repeat(w)}${c.reset}`;
 
   const logo = [
-    `${c.bCyan}  ██████╗${c.bMagenta}  ██████╗ ${c.bBlue} ██╗   ██╗${c.reset}`,
-    `${c.bCyan} ██╔══██╗${c.bMagenta}██╔════╝ ${c.bBlue}╚██╗ ██╔╝${c.reset}`,
-    `${c.bCyan} ███████║${c.bMagenta}██║  ███╗${c.bBlue} ╚████╔╝ ${c.reset}`,
-    `${c.bCyan} ██╔══██║${c.bMagenta}██║   ██║${c.bBlue}  ╚██╔╝  ${c.reset}`,
-    `${c.bCyan} ██║  ██║${c.bMagenta}╚██████╔╝${c.bBlue}   ██║   ${c.reset}`,
-    `${c.bCyan} ╚═╝  ╚═╝${c.bMagenta} ╚═════╝ ${c.bBlue}   ╚═╝   ${c.reset}`,
+    `${c.bCyan}  █████╗  ██████╗ ██╗   ██╗${c.reset}    ${c.bMagenta}███████╗███████╗ ██████╗ ${c.reset}`,
+    `${c.bCyan} ██╔══██╗██╔════╝ ╚██╗ ██╔╝${c.reset}    ${c.bMagenta}██╔════╝██╔════╝██╔════╝ ${c.reset}`,
+    `${c.bCyan} ███████║██║  ███╗ ╚████╔╝ ${c.reset}    ${c.bMagenta}███████╗█████╗  ██║      ${c.reset}`,
+    `${c.bCyan} ██╔══██║██║   ██║  ╚██╔╝  ${c.reset}    ${c.bMagenta}╚════██║██╔══╝  ██║      ${c.reset}`,
+    `${c.bCyan} ██║  ██║╚██████╔╝   ██║   ${c.reset}    ${c.bMagenta}███████║███████╗╚██████╗ ${c.reset}`,
+    `${c.bCyan} ╚═╝  ╚═╝ ╚═════╝    ╚═╝   ${c.reset}    ${c.bMagenta}╚══════╝╚══════╝ ╚═════╝ ${c.reset}`,
   ];
 
-  const tagline = `${c.bBlack}  OVERPOWER CLI ARCHITECT & CYBERSECURITY OPERATOR${c.reset}`;
+  const subline = `  ${c.bYellow}⚡ GEMINI SEC AGENT${c.reset} ${c.bBlack}•${c.reset} ${c.dim}Autonomous DevSecOps & OSINT Workstation${c.reset}`;
 
-  const statusParts = [
-    `${c.bgGreen}${c.black}${c.bold} ◉ ONLINE ${c.reset}`,
+  const statusPills = [
+    `${c.bgGreen}${c.black}${c.bold} ● ONLINE ${c.reset}`,
     `${c.bBlack}│${c.reset}`,
-    `${c.bBlack}Model ${c.reset}${c.bYellow}${c.bold}${modelName}${c.reset}`,
+    `${c.bBlack}Model:${c.reset} ${c.bYellow}${c.bold}${modelName}${c.reset}`,
     `${c.bBlack}│${c.reset}`,
-    `${c.bBlack}Keys ${c.reset}${c.bGreen}${c.bold}${keyCount}${c.reset}`,
+    `${c.bBlack}Keys:${c.reset} ${c.bGreen}${c.bold}${keyCount} Active${c.reset}`,
     `${c.bBlack}│${c.reset}`,
-    `${c.bBlack}Plugins ${c.reset}${c.bMagenta}${c.bold}${pluginCount}${c.reset}`,
+    `${c.bBlack}Plugins:${c.reset} ${c.bMagenta}${c.bold}${pluginCount} Loaded${c.reset}`,
     `${c.bBlack}│${c.reset}`,
-    `${c.bBlack}OS ${c.reset}${c.bCyan}${os.hostname()}${c.reset}`,
+    `${c.bBlack}Host:${c.reset} ${c.bCyan}${os.hostname()}${c.reset}`
   ];
 
-  const hint = `${c.bBlack}  Type a prompt, or use ${c.reset}${c.bCyan}/help${c.reset}${c.bBlack} • ${c.bMagenta}/plugins${c.reset}${c.bBlack} • ${c.bYellow}/run <plugin>${c.reset}${c.bBlack} • ${c.bRed}/exit${c.reset}`;
+  const quickShortcuts = `  ${c.bCyan}${c.bold}🧰 Quick Shortcuts:${c.reset} ${c.bYellow}/kit${c.reset} ${c.dim}(OSINT Hub)${c.reset} ${c.bBlack}•${c.reset} ${c.bGreen}/username${c.reset} ${c.bBlack}•${c.reset} ${c.bGreen}/phone${c.reset} ${c.bBlack}•${c.reset} ${c.bMagenta}/info${c.reset} ${c.bBlack}•${c.reset} ${c.bCyan}/plugins${c.reset} ${c.bBlack}•${c.reset} ${c.bBlack}/help${c.reset}`;
 
   console.log('\n' + hr);
-  logo.forEach(l => console.log(`  ${l}`));
-  console.log(tagline);
+  logo.forEach(l => console.log(l));
+  console.log(subline);
   console.log(hr);
-  console.log('  ' + statusParts.join('  '));
+  console.log('  ' + statusPills.join('  '));
   console.log(hr2);
-  console.log(hint);
+  console.log(quickShortcuts);
   console.log(hr2 + '\n');
 }
 
@@ -161,18 +161,19 @@ export function createSpinner(initial = 'Processing...') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RESPONSE BOX
+// RESPONSE BOX (With true-width border padding)
 // ─────────────────────────────────────────────────────────────────────────────
 export function renderBox(title, content, style = 'cyan') {
-  const colorMap = { cyan: c.bCyan, green: c.bGreen, red: c.bRed, yellow: c.bYellow, magenta: c.bMagenta };
+  const colorMap = { cyan: c.bCyan, green: c.bGreen, red: c.bRed, yellow: c.bYellow, magenta: c.bMagenta, blue: c.bBlue };
   const col = colorMap[style] || c.bCyan;
   const w   = cols();
-  const topFill = Math.max(w - title.length - 8, 2);
+  const plainTitle = stripAnsi(title);
+  const topFill = Math.max(w - plainTitle.length - 8, 2);
 
   console.log('');
   console.log(`  ${col}┌─── ${c.bold}${title}${c.reset} ${col}${'─'.repeat(topFill)}┐${c.reset}`);
   console.log(`  ${col}│${c.reset}`);
-  const lines = content.split('\n');
+  const lines = String(content || '').split('\n');
   for (const line of lines) {
     console.log(`  ${col}│${c.reset}  ${line}`);
   }
@@ -182,29 +183,40 @@ export function renderBox(title, content, style = 'cyan') {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PLUGIN CARD
+// PLUGIN REGISTRY TABLE (Categorized DevSecOps & OSINT)
 // ─────────────────────────────────────────────────────────────────────────────
 export function renderPluginList(plugins) {
   const w = cols();
   console.log('');
   console.log(`  ${c.bMagenta}${c.bold}┌${'─'.repeat(w - 4)}┐${c.reset}`);
-  console.log(`  ${c.bMagenta}│${c.reset}  ${c.bold}${c.bMagenta}🛡️  CYBERSECURITY & DEVSECOPS PLUGIN REGISTRY${c.reset}${' '.repeat(Math.max(0, w - 50))}${c.bMagenta}│${c.reset}`);
+  console.log(`  ${c.bMagenta}│${c.reset}  ${c.bold}${c.bMagenta}🛡️  AGY DEVSECOPS & OSINT INTELLIGENCE PLUGIN REGISTRY${c.reset}${' '.repeat(Math.max(0, w - 56))}${c.bMagenta}│${c.reset}`);
   console.log(`  ${c.bMagenta}├${'─'.repeat(w - 4)}┤${c.reset}`);
 
   if (plugins.length === 0) {
-    console.log(`  ${c.bMagenta}│${c.reset}  ${c.dim}No plugins loaded. Add .mjs files to the plugins/ folder.${c.reset}`);
+    console.log(`  ${c.bMagenta}│${c.reset}  ${c.dim}No plugins loaded. Add .mjs files to plugins/ folder.${c.reset}`);
   } else {
-    const icons = { web_audit:'🌐', port_scanner:'📡', secret_scanner:'🔑', iac_linter:'🐳', log_hunter:'🔍', dep_audit:'📦', sys_ops:'🖥️', code_patcher:'🛠️', osint_search:'🔎' };
+    const icons = {
+      osint_search:  '🔎',
+      web_audit:     '🌐',
+      port_scanner:  '📡',
+      secret_scanner:'🔑',
+      iac_linter:    '🐳',
+      dep_audit:     '📦',
+      log_hunter:    '🔍',
+      sys_ops:       '🖥️',
+      code_patcher:  '🛠️'
+    };
+
     plugins.forEach((p, i) => {
       const icon = icons[p.name] || '⚙️';
       const num  = `${c.bBlack}${String(i + 1).padStart(2, ' ')}.${c.reset}`;
-      const nm   = `${c.bold}${c.bCyan}${p.name.padEnd(18)}${c.reset}`;
-      const desc = `${c.dim}${p.description.substring(0, 56)}${p.description.length > 56 ? '…' : ''}${c.reset}`;
+      const nm   = `${c.bold}${c.bCyan}${p.name.padEnd(16)}${c.reset}`;
+      const desc = `${c.dim}${p.description.substring(0, 52)}${p.description.length > 52 ? '…' : ''}${c.reset}`;
       console.log(`  ${c.bMagenta}│${c.reset}  ${num} ${icon}  ${nm}  ${desc}`);
     });
   }
   console.log(`  ${c.bMagenta}├${'─'.repeat(w - 4)}┤${c.reset}`);
-  console.log(`  ${c.bMagenta}│${c.reset}  ${c.bBlack}Usage: ${c.reset}${c.bCyan}/run <plugin_name> [args]${c.reset}   ${c.bBlack}Direct: ${c.reset}${c.bYellow}agy --run-plugin <name> [args]${c.reset}`);
+  console.log(`  ${c.bMagenta}│${c.reset}  ${c.bBlack}Usage: ${c.reset}${c.bCyan}/run <plugin> [args]${c.reset}  ${c.bBlack}Direct CLI: ${c.reset}${c.bYellow}agy --run-plugin <plugin>${c.reset}`);
   console.log(`  ${c.bMagenta}└${'─'.repeat(w - 4)}┘${c.reset}`);
   console.log('');
 }
@@ -215,7 +227,7 @@ export function renderPluginList(plugins) {
 export function renderKeyTable(maskedKeys) {
   console.log('');
   console.log(`  ${c.bCyan}${c.bold}🔑  API KEY ROTATION POOL${c.reset}`);
-  console.log(`  ${c.bBlack}${'─'.repeat(44)}${c.reset}`);
+  console.log(`  ${c.bBlack}${'─'.repeat(48)}${c.reset}`);
   if (maskedKeys.length === 0) {
     console.log(`  ${c.dim}  (empty — use /addkey <key> to register)${c.reset}`);
   } else {
@@ -226,7 +238,7 @@ export function renderKeyTable(maskedKeys) {
       console.log(`  ${badge}  ${c.bBlack}Key #${k.index}${c.reset}  ${c.bYellow}${k.masked}${c.reset}`);
     });
   }
-  console.log(`  ${c.bBlack}${'─'.repeat(44)}${c.reset}\n`);
+  console.log(`  ${c.bBlack}${'─'.repeat(48)}${c.reset}\n`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -320,8 +332,8 @@ export function logToolCall(name, args) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PROMPT INDICATOR  (returns a styled REPL prompt string)
+// PROMPT INDICATOR (Dynamic model indicator)
 // ─────────────────────────────────────────────────────────────────────────────
-export function promptString() {
-  return `\n  ${c.bBlack}┌─${c.reset} ${c.bMagenta}${c.bold}AGY${c.reset} ${c.bBlack}›${c.reset} `;
+export function promptString(modelName = 'gemini-2.5-flash') {
+  return `\n  ${c.bMagenta}⚡ AGY${c.reset} ${c.bBlack}⟨${c.reset}${c.bYellow}${modelName}${c.reset}${c.bBlack}⟩${c.reset} ${c.bCyan}»${c.reset} `;
 }
