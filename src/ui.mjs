@@ -230,6 +230,23 @@ export function renderKeyTable(maskedKeys) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// OSINT & RESEARCH TOOLKIT MENU (/kit)
+// ─────────────────────────────────────────────────────────────────────────────
+export function renderKitMenu() {
+  const w = cols();
+  console.log('');
+  console.log(`  ${c.bCyan}${c.bold}┌${'─'.repeat(w - 4)}┐${c.reset}`);
+  console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bCyan}🧰  AGY OSINT & INTEL RESEARCH TOOLKIT (/kit)${c.reset}${' '.repeat(Math.max(0, w - 48))}${c.bCyan}│${c.reset}`);
+  console.log(`  ${c.bCyan}├${'─'.repeat(w - 4)}┤${c.reset}`);
+  console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bYellow}[1] /username <user>${c.reset}     ${c.dim}Pindai jejak akun di 20+ platform media sosial.${c.reset}`);
+  console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bGreen}[2] /phone <number>${c.reset}      ${c.dim}Intelijen nomor telepon, provider/operator, & chat link.${c.reset}`);
+  console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bMagenta}[3] /info <topik/query>${c.reset}  ${c.dim}Penelitian mendalam & sintesis intelijen AI berbasis Gemini.${c.reset}`);
+  console.log(`  ${c.bCyan}├${'─'.repeat(w - 4)}┤${c.reset}`);
+  console.log(`  ${c.bCyan}│${c.reset}  ${c.bBlack}Tip: ${c.reset}${c.dim}Ketik perintah langsung misal: ${c.reset}${c.bCyan}/username octocat${c.reset} ${c.dim}atau${c.reset} ${c.bGreen}/phone 08123456789${c.reset} ${c.dim}atau${c.reset} ${c.bMagenta}/info "Topik"${c.reset}`);
+  console.log(`  ${c.bCyan}└${'─'.repeat(w - 4)}┘${c.reset}\n`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HELP TABLE
 // ─────────────────────────────────────────────────────────────────────────────
 export function renderHelp() {
@@ -242,7 +259,11 @@ export function renderHelp() {
   console.log(`  ${c.bMagenta}│${c.reset}  ${c.bold}${c.bMagenta}⚡  AGY COMMAND REFERENCE${c.reset}`);
   console.log(`  ${c.bMagenta}├──────────────────────────── SLASH COMMANDS ─${('─').repeat(Math.max(0, w - 50))}┤${c.reset}`);
   console.log(row('/help  · -h',            'Show this help menu'));
-  console.log(row('/search <target>',       'OSINT search for username or phone number'));
+  console.log(row('/kit',                   'Open OSINT & Intel Research Toolkit hub'));
+  console.log(row('/username <user>',       'Scan social media footprint across 20+ platforms'));
+  console.log(row('/phone <number>',        'Phone number OSINT, carrier lookup & direct chat links'));
+  console.log(row('/info <query>',          'Deep AI research & intelligence investigation'));
+  console.log(row('/search <target>',       'Universal OSINT search (auto-detects target)'));
   console.log(row('/plugins',               'List all loaded cybersecurity plugins'));
   console.log(row('/run <plugin> [args]',   'Execute plugin directly (no LLM)'));
   console.log(row('/model [name]',          'View or switch active Gemini model'));
@@ -252,6 +273,10 @@ export function renderHelp() {
   console.log(row('/clear  · cls',          'Clear screen and reprint banner'));
   console.log(row('/exit   · quit',         'Exit AGY terminal session'));
   console.log(`  ${c.bMagenta}├────────────────────────────── CLI FLAGS ─────${('─').repeat(Math.max(0, w - 51))}┤${c.reset}`);
+  console.log(row('agy --kit',              'Show OSINT Toolkit guide'));
+  console.log(row('agy --username <user>',  'Direct OSINT username lookup'));
+  console.log(row('agy --phone <number>',   'Direct phone number OSINT lookup'));
+  console.log(row('agy --info "query"',     'Direct AI deep research & intelligence'));
   console.log(row('agy -p "prompt"',        'One-shot prompt (non-interactive)'));
   console.log(row('agy --run-plugin <n>',   'Execute plugin directly from shell'));
   console.log(row('agy --list-plugins',     'List plugins and exit'));

@@ -3,10 +3,10 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { startInteractiveREPL, runOneShot, showHelp, parseCliArgs } from '../src/cli.mjs';
+import { startInteractiveREPL, runOneShot, showHelp, parseCliArgs, executeUsernameSearch, executePhoneSearch, executeInfoResearch } from '../src/cli.mjs';
 import { pluginLoader } from '../src/plugin_loader.mjs';
 import { keyManager, config } from '../src/config.mjs';
-import { colors, c, logSuccess, logError, logWarn, renderBox, renderPluginList, renderKeyTable } from '../src/ui.mjs';
+import { colors, c, logSuccess, logError, logWarn, renderBox, renderPluginList, renderKeyTable, renderKitMenu } from '../src/ui.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,6 +38,11 @@ async function main() {
     process.exit(0);
   }
 
+  if (args.includes('--kit')) {
+    renderKitMenu();
+    process.exit(0);
+  }
+
   if (args.includes('--list-plugins')) {
     const plugins = await pluginLoader.loadPlugins();
     renderPluginList(plugins);
@@ -49,26 +54,56 @@ async function main() {
     process.exit(0);
   }
 
-  // OSINT search CLI flag
+  // OSINT username CLI flag
+  const userIdx = args.indexOf('--username') !== -1 ? args.indexOf('--username') : args.indexOf('-u');
+  if (userIdx !== -1) {
+    const target = args[userIdx + 1];
+    if (!target || target.startsWith('-')) {
+      logError('Target username required. Example: agy --username octocat');
+      process.exit(1);
+    }
+    await executeUsernameSearch(target, { json: args.includes('--json') });
+    process.exit(0);
+  }
+
+  // OSINT phone CLI flag
+  const phoneIdx = args.indexOf('--phone');
+  if (phoneIdx !== -1) {
+    const target = args[phoneIdx + 1];
+    if (!target || target.startsWith('-')) {
+      logError('Target phone number required. Example: agy --phone +628123456789');
+      process.exit(1);
+    }
+    await executePhoneSearch(target, { json: args.includes('--json') });
+    process.exit(0);
+  }
+
+  // OSINT deep intel research CLI flag
+  const infoIdx = args.indexOf('--info');
+  if (infoIdx !== -1) {
+    const query = args[infoIdx + 1];
+    if (!query || query.startsWith('-')) {
+      logError('Query/topic required for --info. Example: agy --info "CVE-2024-3094"');
+      process.exit(1);
+    }
+    await executeInfoResearch(query, { json: args.includes('--json') });
+    process.exit(0);
+  }
+
+  // Universal OSINT search CLI flag
   const searchIdx = args.indexOf('--search');
   if (searchIdx !== -1) {
     const target = args[searchIdx + 1];
-    if (!target) {
+    if (!target || target.startsWith('-')) {
       logError('Target username or phone number required. Example: agy --search octocat');
       process.exit(1);
     }
-    await pluginLoader.loadPlugins();
-    const result = await pluginLoader.execute('osint_search', { target });
-    if (args.includes('--json')) {
-      console.log(JSON.stringify(result, null, 2));
+    if (/^(\+|08|62|\d{7,15}$)/.test(target.replace(/[\s\-()]/g, ''))) {
+      await executePhoneSearch(target, { json: args.includes('--json') });
     } else {
-      if (result.success) {
-        renderBox(`🔎 OSINT SEARCH RESULT`, JSON.stringify(result.data, null, 2), 'cyan');
-      } else {
-        logError(result.error);
-      }
+      await executeUsernameSearch(target, { json: args.includes('--json') });
     }
-    process.exit(result.success ? 0 : 1);
+    process.exit(0);
   }
 
   // Direct plugin execution flag

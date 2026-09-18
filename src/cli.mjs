@@ -10,6 +10,7 @@ import {
   renderPluginList,
   renderKeyTable,
   renderHelp,
+  renderKitMenu,
   promptString,
   printDivider,
   logSuccess,
@@ -86,6 +87,130 @@ export async function runOneShot(prompt, opts = {}) {
       console.error(JSON.stringify({ status: 'error', error: err.message }, null, 2));
     }
     process.exit(1);
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OSINT & RESEARCH TOOLKIT EXECUTORS
+// ─────────────────────────────────────────────────────────────────────────────
+export async function executeUsernameSearch(target, opts = {}) {
+  await pluginLoader.loadPlugins();
+  const cleanTarget = String(target || '').trim();
+  if (!cleanTarget) {
+    logWarn('Target username tidak boleh kosong.');
+    return;
+  }
+  const spinner = createSpinner(`Melakukan pemindaian akun @${c.bCyan}${cleanTarget}${c.reset} di 20+ platform…`);
+  if (!opts.json) spinner.start();
+  const res = await pluginLoader.execute('osint_search', { target: cleanTarget, type: 'username' });
+  if (!opts.json) spinner.stop();
+
+  if (opts.json) {
+    console.log(JSON.stringify(res, null, 2));
+    return;
+  }
+
+  if (res.success) {
+    const data = res.data;
+    let output = `${c.bYellow}Target Query:${c.reset} @${data.query}\n` +
+                 `${c.bYellow}Platforms Checked:${c.reset} ${data.totalPlatformsChecked}\n` +
+                 `${c.bYellow}Profiles Found:${c.reset} ${data.foundCount > 0 ? c.bGreen + data.foundCount : c.bRed + '0'}${c.reset}\n\n`;
+
+    if (data.foundProfiles && data.foundProfiles.length > 0) {
+      output += `${c.bGreen}✔ Akun Terverifikasi Ditemukan:${c.reset}\n`;
+      data.foundProfiles.forEach(p => {
+        output += `  • ${c.bold}${p.platform.padEnd(14)}${c.reset} → ${c.bCyan}${p.url}${c.reset}\n`;
+      });
+    } else {
+      output += `  ${c.dim}Tidak ditemukan profil publik yang cocok di platform terdaftar.${c.reset}\n`;
+    }
+
+    if (data.dorks) {
+      output += `\n${c.bMagenta}🔗 Tautan Dork & Engine Tambahan:${c.reset}\n` +
+                `  • Google Search:      ${c.dim}${data.dorks.google}${c.reset}\n` +
+                `  • Profile Aggregator: ${c.dim}${data.dorks.googleProfiles}${c.reset}\n` +
+                `  • WhatsMyName DB:     ${c.dim}${data.dorks.whatsMyName}${c.reset}`;
+    }
+
+    renderBox(`👤 OSINT USERNAME FOOTPRINT (${res.durationMs}ms)`, output, 'cyan');
+  } else {
+    logError(res.error);
+  }
+}
+
+export async function executePhoneSearch(target, opts = {}) {
+  await pluginLoader.loadPlugins();
+  const cleanTarget = String(target || '').trim();
+  if (!cleanTarget) {
+    logWarn('Target nomor telepon tidak boleh kosong.');
+    return;
+  }
+  const spinner = createSpinner(`Melakukan analisis intelijen nomor ${c.bCyan}${cleanTarget}${c.reset}…`);
+  if (!opts.json) spinner.start();
+  const res = await pluginLoader.execute('osint_search', { target: cleanTarget, type: 'phone' });
+  if (!opts.json) spinner.stop();
+
+  if (opts.json) {
+    console.log(JSON.stringify(res, null, 2));
+    return;
+  }
+
+  if (res.success) {
+    const data = res.data;
+    let output = `${c.bYellow}Nomor Input:${c.reset} ${data.query}\n` +
+                 `${c.bYellow}Format Standar E.164:${c.reset} ${c.bGreen}${data.parsed.e164Format}${c.reset}\n` +
+                 `${c.bYellow}Format Nasional:${c.reset} ${data.parsed.nationalFormat}\n` +
+                 `${c.bYellow}Negara Asal:${c.reset} ${data.location.flag} ${data.location.country} (${data.location.isoCode})\n` +
+                 `${c.bYellow}Provider / Operator:${c.reset} ${c.bCyan}${data.telecom.carrier}${c.reset}\n` +
+                 `${c.bYellow}Tipe Saluran:${c.reset} ${data.telecom.lineType}\n\n` +
+                 `${c.bMagenta}🔗 Quick Actions & Direct OSINT:${c.reset}\n` +
+                 `  • Chat WhatsApp:      ${c.dim}${data.osintLinks.whatsappChat}${c.reset}\n` +
+                 `  • Chat Telegram:      ${c.dim}${data.osintLinks.telegramChat}${c.reset}\n` +
+                 `  • Truecaller Direct:  ${c.dim}${data.osintLinks.truecallerSearch}${c.reset}\n` +
+                 `  • Google Search Dork: ${c.dim}${data.osintLinks.googleDork}${c.reset}\n` +
+                 `  • Sync.me Database:   ${c.dim}${data.osintLinks.syncMe}${c.reset}`;
+
+    renderBox(`📞 OSINT PHONE & TELECOM INTELLIGENCE (${res.durationMs}ms)`, output, 'green');
+  } else {
+    logError(res.error);
+  }
+}
+
+export async function executeInfoResearch(query, opts = {}) {
+  await pluginLoader.loadPlugins();
+  const cleanQuery = String(query || '').trim();
+  if (!cleanQuery) {
+    logWarn('Query/topik penelitian intelijen tidak boleh kosong.');
+    return;
+  }
+  const spinner = createSpinner(`Menjalankan penelitian intelijen mendalam via Gemini AI untuk "${cleanQuery}"…`);
+  if (!opts.json) spinner.start();
+  try {
+    const prompt = `Lakukan analisis intelijen mendalam (Deep OSINT / Technical Intelligence Investigation) mengenai target/topik berikut:
+"${cleanQuery}"
+
+Format laporan terstruktur:
+1. 🎯 Identifikasi & Profil Singkat Target / Topik
+2. 🔬 Analisis Teknis, Vektor Keamanan & Jejak Publik
+3. ⚠️ Penilaian Risiko (Threat Landscape & Potential Exposure)
+4. 🛠️ Langkah Investigasi Lanjutan & Rekomendasi Mitigasi / Sumber Verifikasi`;
+
+    const result = await agent.sendMessage(prompt, (t) => {
+      if (!opts.json) spinner.update(t);
+    });
+    if (!opts.json) {
+      spinner.stop();
+      renderBox(`🔬 DEEP INTEL RESEARCH: ${cleanQuery.toUpperCase()}`, result, 'magenta');
+    } else {
+      console.log(JSON.stringify({ status: 'success', query: cleanQuery, intelligence: result }, null, 2));
+    }
+  } catch (err) {
+    if (!opts.json) {
+      spinner.fail('Gagal mendapatkan respon intelijen');
+      logError(err.message);
+    } else {
+      console.error(JSON.stringify({ status: 'error', error: err.message }, null, 2));
+    }
   }
 }
 
@@ -187,72 +312,171 @@ export async function startInteractiveREPL() {
       return;
     }
 
-    // ── /search <query> ────────────────────────────────────────────────────────
-    if (/^(?:\/search|search)(\s|$)/i.test(input)) {
-      const rest = input.replace(/^(?:\/search|search)\s*/i, '').trim();
-      if (!rest) {
-        logWarn('Usage: /search <username | phone_number>\n  Contoh: /search octocat  atau  /search +628123456789');
+    // ── /kit [1|2|3|username|phone|info] [target] ──────────────────────────────
+    if (/^(?:\/kit|kit)(\s|$)/i.test(input)) {
+      const rest = input.replace(/^(?:\/kit|kit)\s*/i, '').trim();
+
+      if (rest.startsWith('1') || rest.startsWith('username')) {
+        const subTarget = rest.replace(/^(?:1|username)\s*/i, '').trim();
+        if (subTarget) {
+          await executeUsernameSearch(subTarget);
+          rl.prompt();
+        } else {
+          rl.question(`  ${c.bYellow}👤 Masukkan username target:${c.reset} `, async (ans) => {
+            if (ans.trim()) await executeUsernameSearch(ans.trim());
+            rl.prompt();
+          });
+        }
+        return;
+      }
+
+      if (rest.startsWith('2') || rest.startsWith('phone')) {
+        const subTarget = rest.replace(/^(?:2|phone)\s*/i, '').trim();
+        if (subTarget) {
+          await executePhoneSearch(subTarget);
+          rl.prompt();
+        } else {
+          rl.question(`  ${c.bGreen}📞 Masukkan nomor telepon (+62/08):${c.reset} `, async (ans) => {
+            if (ans.trim()) await executePhoneSearch(ans.trim());
+            rl.prompt();
+          });
+        }
+        return;
+      }
+
+      if (rest.startsWith('3') || rest.startsWith('info')) {
+        const subQuery = rest.replace(/^(?:3|info)\s*/i, '').trim();
+        if (subQuery) {
+          await executeInfoResearch(subQuery);
+          rl.prompt();
+        } else {
+          rl.question(`  ${c.bMagenta}🔬 Masukkan topik/query penelitian intelijen:${c.reset} `, async (ans) => {
+            if (ans.trim()) await executeInfoResearch(ans.trim());
+            rl.prompt();
+          });
+        }
+        return;
+      }
+
+      // If user typed: /kit <anything_else>
+      if (rest) {
+        if (/^(\+|08|62|\d{7,15}$)/.test(rest.replace(/[\s\-()]/g, ''))) {
+          await executePhoneSearch(rest);
+        } else {
+          await executeUsernameSearch(rest);
+        }
         rl.prompt();
         return;
       }
 
-      let mode = 'auto';
-      let target = rest;
-      if (/^(?:user|username)\s+/i.test(rest)) {
-        mode = 'username';
-        target = rest.replace(/^(?:user|username)\s+/i, '').trim();
-      } else if (/^(?:phone|telp|nomor)\s+/i.test(rest)) {
-        mode = 'phone';
-        target = rest.replace(/^(?:phone|telp|nomor)\s+/i, '').trim();
-      }
+      // Default /kit without args -> show interactive menu
+      renderKitMenu();
+      rl.question(`  ${c.bCyan}Pilih opsi [1/2/3] atau ketik query:${c.reset} `, async (choice) => {
+        const ch = choice.trim();
+        if (!ch) { rl.prompt(); return; }
 
-      const spinner = createSpinner(`Running OSINT search for ${c.bCyan}${target}${c.reset}…`);
-      spinner.start();
-      const res = await pluginLoader.execute('osint_search', { target, type: mode });
-      spinner.stop();
-
-      if (res.success) {
-        const data = res.data;
-        if (data.type === 'USERNAME_OSINT') {
-          let output = `${c.bYellow}Target Query:${c.reset} @${data.query}\n` +
-                       `${c.bYellow}Platforms Checked:${c.reset} ${data.totalPlatformsChecked}\n` +
-                       `${c.bYellow}Profiles Found:${c.reset} ${data.foundCount > 0 ? c.bGreen + data.foundCount : c.bRed + '0'}${c.reset}\n\n`;
-
-          if (data.foundProfiles.length > 0) {
-            output += `${c.bGreen}✔ Found Profiles:${c.reset}\n`;
-            data.foundProfiles.forEach(p => {
-              output += `  • ${c.bold}${p.platform.padEnd(14)}${c.reset} → ${c.bCyan}${p.url}${c.reset}\n`;
-            });
-          } else {
-            output += `  ${c.dim}Tidak ditemukan akun publik yang cocok di platform terdaftar.${c.reset}\n`;
-          }
-
-          output += `\n${c.bMagenta}🔗 OSINT Search Dorks:${c.reset}\n` +
-                    `  • Google:        ${c.dim}${data.dorks.google}${c.reset}\n` +
-                    `  • All Profiles:  ${c.dim}${data.dorks.googleProfiles}${c.reset}\n` +
-                    `  • WhatsMyName:   ${c.dim}${data.dorks.whatsMyName}${c.reset}`;
-
-          renderBox(`🔎 OSINT USERNAME INVESTIGATION (${res.durationMs}ms)`, output, 'cyan');
-        } else if (data.type === 'PHONE_OSINT') {
-          let output = `${c.bYellow}Input Number:${c.reset} ${data.query}\n` +
-                       `${c.bYellow}E.164 Format:${c.reset} ${c.bGreen}${data.parsed.e164Format}${c.reset}\n` +
-                       `${c.bYellow}National Format:${c.reset} ${data.parsed.nationalFormat}\n` +
-                       `${c.bYellow}Country:${c.reset} ${data.location.flag} ${data.location.country} (${data.location.isoCode})\n` +
-                       `${c.bYellow}Carrier / Operator:${c.reset} ${c.bCyan}${data.telecom.carrier}${c.reset}\n` +
-                       `${c.bYellow}Line Type:${c.reset} ${data.telecom.lineType}\n\n` +
-                       `${c.bMagenta}🔗 Quick OSINT Links:${c.reset}\n` +
-                       `  • WhatsApp Chat:     ${c.dim}${data.osintLinks.whatsappChat}${c.reset}\n` +
-                       `  • Telegram Chat:     ${c.dim}${data.osintLinks.telegramChat}${c.reset}\n` +
-                       `  • Truecaller Search: ${c.dim}${data.osintLinks.truecallerSearch}${c.reset}\n` +
-                       `  • Google Dork:       ${c.dim}${data.osintLinks.googleDork}${c.reset}\n` +
-                       `  • Sync.me Lookup:    ${c.dim}${data.osintLinks.syncMe}${c.reset}`;
-
-          renderBox(`📞 OSINT PHONE NUMBER INVESTIGATION (${res.durationMs}ms)`, output, 'green');
+        if (ch === '1' || ch.toLowerCase() === 'username') {
+          rl.question(`  ${c.bYellow}👤 Masukkan username target:${c.reset} `, async (ans) => {
+            if (ans.trim()) await executeUsernameSearch(ans.trim());
+            rl.prompt();
+          });
+        } else if (ch === '2' || ch.toLowerCase() === 'phone') {
+          rl.question(`  ${c.bGreen}📞 Masukkan nomor telepon (+62/08):${c.reset} `, async (ans) => {
+            if (ans.trim()) await executePhoneSearch(ans.trim());
+            rl.prompt();
+          });
+        } else if (ch === '3' || ch.toLowerCase() === 'info') {
+          rl.question(`  ${c.bMagenta}🔬 Masukkan topik/query penelitian intelijen:${c.reset} `, async (ans) => {
+            if (ans.trim()) await executeInfoResearch(ans.trim());
+            rl.prompt();
+          });
+        } else if (ch.startsWith('1 ') || ch.startsWith('username ')) {
+          await executeUsernameSearch(ch.replace(/^(?:1|username)\s+/i, ''));
+          rl.prompt();
+        } else if (ch.startsWith('2 ') || ch.startsWith('phone ')) {
+          await executePhoneSearch(ch.replace(/^(?:2|phone)\s+/i, ''));
+          rl.prompt();
+        } else if (ch.startsWith('3 ') || ch.startsWith('info ')) {
+          await executeInfoResearch(ch.replace(/^(?:3|info)\s+/i, ''));
+          rl.prompt();
         } else {
-          renderBox(`🔎 OSINT SEARCH RESULT`, JSON.stringify(data, null, 2), 'cyan');
+          if (/^(\+|08|62|\d{7,15}$)/.test(ch.replace(/[\s\-()]/g, ''))) {
+            await executePhoneSearch(ch);
+          } else {
+            await executeUsernameSearch(ch);
+          }
+          rl.prompt();
         }
+      });
+      return;
+    }
+
+    // ── /username <target> ─────────────────────────────────────────────────────
+    if (/^(?:\/username|username)(\s|$)/i.test(input)) {
+      const target = input.replace(/^(?:\/username|username)\s*/i, '').trim();
+      if (!target) {
+        rl.question(`  ${c.bYellow}👤 Masukkan username target:${c.reset} `, async (ans) => {
+          if (ans.trim()) await executeUsernameSearch(ans.trim());
+          rl.prompt();
+        });
+        return;
+      }
+      await executeUsernameSearch(target);
+      rl.prompt();
+      return;
+    }
+
+    // ── /phone <number> ────────────────────────────────────────────────────────
+    if (/^(?:\/phone|phone|\/phonenumber|phonenumber)(\s|$)/i.test(input)) {
+      const target = input.replace(/^(?:\/phone|phone|\/phonenumber|phonenumber)\s*/i, '').trim();
+      if (!target) {
+        rl.question(`  ${c.bGreen}📞 Masukkan nomor telepon (+62/08):${c.reset} `, async (ans) => {
+          if (ans.trim()) await executePhoneSearch(ans.trim());
+          rl.prompt();
+        });
+        return;
+      }
+      await executePhoneSearch(target);
+      rl.prompt();
+      return;
+    }
+
+    // ── /info <query> ──────────────────────────────────────────────────────────
+    if (/^(?:\/info|info)(\s|$)/i.test(input)) {
+      const query = input.replace(/^(?:\/info|info)\s*/i, '').trim();
+      if (!query) {
+        rl.question(`  ${c.bMagenta}🔬 Masukkan topik/query penelitian intelijen:${c.reset} `, async (ans) => {
+          if (ans.trim()) await executeInfoResearch(ans.trim());
+          rl.prompt();
+        });
+        return;
+      }
+      await executeInfoResearch(query);
+      rl.prompt();
+      return;
+    }
+
+    // ── /search <query> (Universal Auto-Detection) ──────────────────────────────
+    if (/^(?:\/search|search)(\s|$)/i.test(input)) {
+      const rest = input.replace(/^(?:\/search|search)\s*/i, '').trim();
+      if (!rest) {
+        rl.question(`  ${c.bCyan}🔎 Masukkan target (username atau nomor telepon):${c.reset} `, async (ans) => {
+          const t = ans.trim();
+          if (t) {
+            if (/^(\+|08|62|\d{7,15}$)/.test(t.replace(/[\s\-()]/g, ''))) {
+              await executePhoneSearch(t);
+            } else {
+              await executeUsernameSearch(t);
+            }
+          }
+          rl.prompt();
+        });
+        return;
+      }
+      if (/^(\+|08|62|\d{7,15}$)/.test(rest.replace(/[\s\-()]/g, ''))) {
+        await executePhoneSearch(rest);
       } else {
-        logError(res.error);
+        await executeUsernameSearch(rest);
       }
       rl.prompt();
       return;

@@ -117,7 +117,11 @@ node bin/agy.mjs
 ```
 
 #### Slash Commands inside REPL:
-- `/search <target>` — Fast OSINT search for username or phone number (e.g. `/search octocat` or `/search +628123456789`).
+- `/kit` — Open the interactive OSINT & Intel Research Toolkit hub.
+- `/username <user>` — Scan social media footprints across 20+ platforms (interactive prompt if empty).
+- `/phone <number>` — Phone number intelligence, Indonesian carrier prefix & direct chat links.
+- `/info <query>` — Deep AI OSINT research & threat landscape investigation via Gemini.
+- `/search <target>` — Universal OSINT search (auto-detects phone vs username).
 - `/help` — Display command guide and CLI flags.
 - `/plugins` — List all registered plugins and parameter schemas.
 - `/run <plugin> [args]` — Direct execution of a plugin with JSON arguments.
@@ -132,10 +136,19 @@ node bin/agy.mjs
 
 ### 2. One-Shot Prompt & Pipeline Automation
 
-#### OSINT CLI Search:
+#### OSINT & Research CLI Flags:
 ```bash
-agy --search octocat
-agy --search +628123456789
+# OSINT Username Lookup:
+agy --username octocat
+
+# OSINT Phone Number Investigation:
+agy --phone +628123456789
+
+# Deep AI Intel & Topic Investigation:
+agy --info "CVE-2024-3094 xz backdoor supply chain"
+
+# Interactive Toolkit Guide:
+agy --kit
 ```
 
 #### One-Shot Prompt:
