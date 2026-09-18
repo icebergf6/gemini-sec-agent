@@ -187,6 +187,77 @@ export async function startInteractiveREPL() {
       return;
     }
 
+    // ── /search <query> ────────────────────────────────────────────────────────
+    if (/^(?:\/search|search)(\s|$)/i.test(input)) {
+      const rest = input.replace(/^(?:\/search|search)\s*/i, '').trim();
+      if (!rest) {
+        logWarn('Usage: /search <username | phone_number>\n  Contoh: /search octocat  atau  /search +628123456789');
+        rl.prompt();
+        return;
+      }
+
+      let mode = 'auto';
+      let target = rest;
+      if (/^(?:user|username)\s+/i.test(rest)) {
+        mode = 'username';
+        target = rest.replace(/^(?:user|username)\s+/i, '').trim();
+      } else if (/^(?:phone|telp|nomor)\s+/i.test(rest)) {
+        mode = 'phone';
+        target = rest.replace(/^(?:phone|telp|nomor)\s+/i, '').trim();
+      }
+
+      const spinner = createSpinner(`Running OSINT search for ${c.bCyan}${target}${c.reset}…`);
+      spinner.start();
+      const res = await pluginLoader.execute('osint_search', { target, type: mode });
+      spinner.stop();
+
+      if (res.success) {
+        const data = res.data;
+        if (data.type === 'USERNAME_OSINT') {
+          let output = `${c.bYellow}Target Query:${c.reset} @${data.query}\n` +
+                       `${c.bYellow}Platforms Checked:${c.reset} ${data.totalPlatformsChecked}\n` +
+                       `${c.bYellow}Profiles Found:${c.reset} ${data.foundCount > 0 ? c.bGreen + data.foundCount : c.bRed + '0'}${c.reset}\n\n`;
+
+          if (data.foundProfiles.length > 0) {
+            output += `${c.bGreen}✔ Found Profiles:${c.reset}\n`;
+            data.foundProfiles.forEach(p => {
+              output += `  • ${c.bold}${p.platform.padEnd(14)}${c.reset} → ${c.bCyan}${p.url}${c.reset}\n`;
+            });
+          } else {
+            output += `  ${c.dim}Tidak ditemukan akun publik yang cocok di platform terdaftar.${c.reset}\n`;
+          }
+
+          output += `\n${c.bMagenta}🔗 OSINT Search Dorks:${c.reset}\n` +
+                    `  • Google:        ${c.dim}${data.dorks.google}${c.reset}\n` +
+                    `  • All Profiles:  ${c.dim}${data.dorks.googleProfiles}${c.reset}\n` +
+                    `  • WhatsMyName:   ${c.dim}${data.dorks.whatsMyName}${c.reset}`;
+
+          renderBox(`🔎 OSINT USERNAME INVESTIGATION (${res.durationMs}ms)`, output, 'cyan');
+        } else if (data.type === 'PHONE_OSINT') {
+          let output = `${c.bYellow}Input Number:${c.reset} ${data.query}\n` +
+                       `${c.bYellow}E.164 Format:${c.reset} ${c.bGreen}${data.parsed.e164Format}${c.reset}\n` +
+                       `${c.bYellow}National Format:${c.reset} ${data.parsed.nationalFormat}\n` +
+                       `${c.bYellow}Country:${c.reset} ${data.location.flag} ${data.location.country} (${data.location.isoCode})\n` +
+                       `${c.bYellow}Carrier / Operator:${c.reset} ${c.bCyan}${data.telecom.carrier}${c.reset}\n` +
+                       `${c.bYellow}Line Type:${c.reset} ${data.telecom.lineType}\n\n` +
+                       `${c.bMagenta}🔗 Quick OSINT Links:${c.reset}\n` +
+                       `  • WhatsApp Chat:     ${c.dim}${data.osintLinks.whatsappChat}${c.reset}\n` +
+                       `  • Telegram Chat:     ${c.dim}${data.osintLinks.telegramChat}${c.reset}\n` +
+                       `  • Truecaller Search: ${c.dim}${data.osintLinks.truecallerSearch}${c.reset}\n` +
+                       `  • Google Dork:       ${c.dim}${data.osintLinks.googleDork}${c.reset}\n` +
+                       `  • Sync.me Lookup:    ${c.dim}${data.osintLinks.syncMe}${c.reset}`;
+
+          renderBox(`📞 OSINT PHONE NUMBER INVESTIGATION (${res.durationMs}ms)`, output, 'green');
+        } else {
+          renderBox(`🔎 OSINT SEARCH RESULT`, JSON.stringify(data, null, 2), 'cyan');
+        }
+      } else {
+        logError(res.error);
+      }
+      rl.prompt();
+      return;
+    }
+
     // ── /run <plugin> [args] ───────────────────────────────────────────────────
     const isRunCmd = /^(?:\/run|run|--run-plugin)\s+/i.test(input);
     if (isRunCmd) {

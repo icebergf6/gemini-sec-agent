@@ -194,7 +194,7 @@ export function renderPluginList(plugins) {
   if (plugins.length === 0) {
     console.log(`  ${c.bMagenta}│${c.reset}  ${c.dim}No plugins loaded. Add .mjs files to the plugins/ folder.${c.reset}`);
   } else {
-    const icons = { web_audit:'🌐', port_scanner:'📡', secret_scanner:'🔑', iac_linter:'🐳', log_hunter:'🔍', dep_audit:'📦', sys_ops:'🖥️', code_patcher:'🛠️' };
+    const icons = { web_audit:'🌐', port_scanner:'📡', secret_scanner:'🔑', iac_linter:'🐳', log_hunter:'🔍', dep_audit:'📦', sys_ops:'🖥️', code_patcher:'🛠️', osint_search:'🔎' };
     plugins.forEach((p, i) => {
       const icon = icons[p.name] || '⚙️';
       const num  = `${c.bBlack}${String(i + 1).padStart(2, ' ')}.${c.reset}`;
@@ -242,6 +242,7 @@ export function renderHelp() {
   console.log(`  ${c.bMagenta}│${c.reset}  ${c.bold}${c.bMagenta}⚡  AGY COMMAND REFERENCE${c.reset}`);
   console.log(`  ${c.bMagenta}├──────────────────────────── SLASH COMMANDS ─${('─').repeat(Math.max(0, w - 50))}┤${c.reset}`);
   console.log(row('/help  · -h',            'Show this help menu'));
+  console.log(row('/search <target>',       'OSINT search for username or phone number'));
   console.log(row('/plugins',               'List all loaded cybersecurity plugins'));
   console.log(row('/run <plugin> [args]',   'Execute plugin directly (no LLM)'));
   console.log(row('/model [name]',          'View or switch active Gemini model'));

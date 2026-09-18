@@ -8,7 +8,7 @@
 </p>
 
 > **Autonomous AI-Powered Cybersecurity Workstation & Terminal Assistant driven by Google Gemini API.**  
-> Built from scratch with zero placeholders, full security-first interfacing, multi-key rotation pools, and 8 built-in offensive & defensive security plugins integrated into a native function-calling agent loop.
+> Built from scratch with zero placeholders, full security-first interfacing, multi-key rotation pools, and 9 built-in offensive, defensive & OSINT security plugins integrated into a native function-calling agent loop.
 
 ```
   █████╗  ██████╗ ██╗   ██╗    ███████╗███████╗██████╗ 
@@ -18,7 +18,7 @@
  ██║  ██║╚██████╔╝   ██║       ███████║███████╗██████╔╝
  ╚═╝  ╚═╝ ╚═════╝    ╚═╝       ╚══════╝╚══════╝╚═════╝ 
 ================================================================
- ACTIVE  Model: gemini-2.5-flash | Key Pool: Enabled | Plugins: 8
+ ACTIVE  Model: gemini-2.5-flash | Key Pool: Enabled | Plugins: 9
 ================================================================
 ```
 
@@ -26,7 +26,8 @@
 
 ## 💡 Key Highlights
 
-* 🧠 **Autonomous Function-Calling Loop:** Gemini intelligently decides when to invoke any of the 8 local plugins, inspects raw system/network data, and synthesizes expert security insights.
+* 🧠 **Autonomous Function-Calling Loop:** Gemini intelligently decides when to invoke any of the 9 local plugins, inspects raw system/network data, and synthesizes expert security insights.
+* 🔎 **OSINT Social & Telecom Reconnaissance:** Scan username footprints across 20+ social platforms and analyze phone numbers (E.164, carrier prefix, WhatsApp/Telegram lookup, and Google dorks) via `/search`.
 * 🔄 **Multi-Key API Rotation Pool:** Seamlessly rotates through multiple Gemini API keys upon encountering HTTP 429 (`RESOURCE_EXHAUSTED`), preventing session throttling.
 * 💻 **Interactive Cyberpunk REPL:** ANSI color scheme, live spinners, rich text panels, and native Windows PowerShell UTF-8 rendering.
 * 🔌 **Direct Plugin Execution:** Bypass the LLM to run plugins directly via `/run <plugin>` in REPL or `agy --run-plugin <plugin>` in CI/CD automation pipelines.
@@ -44,7 +45,7 @@ graph TD
     Agent --> KeyPool[Multi-Key Rotation Pool]
     KeyPool --> GeminiAPI[Google Gemini API]
     Agent --> PluginEngine[Security Plugin Loader]
-    PluginEngine --> Plugins[8 OffSec / DefSec Plugins]
+    PluginEngine --> Plugins[9 Security & OSINT Plugins]
     Plugins --> WebAudit[web_audit]
     Plugins --> PortScan[port_scanner]
     Plugins --> SecretScan[secret_scanner]
@@ -53,7 +54,8 @@ graph TD
     Plugins --> DepAudit[dep_audit]
     Plugins --> SysOps[sys_ops]
     Plugins --> CodePatch[code_patcher]
-    Plugins --> Target[Target System / Filesystem / Network]
+    Plugins --> OsintSearch[osint_search]
+    Plugins --> Target[Target System / Filesystem / Network / OSINT Web]
 ```
 
 ---
@@ -62,6 +64,7 @@ graph TD
 
 | Plugin | Category | Description | Capabilities |
 | :--- | :---: | :--- | :--- |
+| **`osint_search`** | OSINT / Recon | Social media username & phone number footprint investigator. | 20+ platform checks (GitHub, Reddit, X, TikTok, Telegram), carrier prefix lookup, dorks. |
 | **`web_audit`** | Recon / DefSec | Audits HTTP security headers, SSL certificates, and DNS records. | Checks HSTS, CSP, X-Frame, CORS, SSL expiry, A/AAAA/MX records. |
 | **`port_scanner`** | Recon / Network | Concurrency-controlled async TCP port scanner. | Scans ports, grabs banners, flags dangerous open services. |
 | **`secret_scanner`** | DevSecOps | Credential leak detector with Shannon entropy matching. | Finds AWS keys, GitHub PATs, JWTs, private keys with masking. |
@@ -114,6 +117,7 @@ node bin/agy.mjs
 ```
 
 #### Slash Commands inside REPL:
+- `/search <target>` — Fast OSINT search for username or phone number (e.g. `/search octocat` or `/search +628123456789`).
 - `/help` — Display command guide and CLI flags.
 - `/plugins` — List all registered plugins and parameter schemas.
 - `/run <plugin> [args]` — Direct execution of a plugin with JSON arguments.
@@ -127,6 +131,12 @@ node bin/agy.mjs
 ---
 
 ### 2. One-Shot Prompt & Pipeline Automation
+
+#### OSINT CLI Search:
+```bash
+agy --search octocat
+agy --search +628123456789
+```
 
 #### One-Shot Prompt:
 ```bash

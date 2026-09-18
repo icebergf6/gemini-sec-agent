@@ -49,6 +49,28 @@ async function main() {
     process.exit(0);
   }
 
+  // OSINT search CLI flag
+  const searchIdx = args.indexOf('--search');
+  if (searchIdx !== -1) {
+    const target = args[searchIdx + 1];
+    if (!target) {
+      logError('Target username or phone number required. Example: agy --search octocat');
+      process.exit(1);
+    }
+    await pluginLoader.loadPlugins();
+    const result = await pluginLoader.execute('osint_search', { target });
+    if (args.includes('--json')) {
+      console.log(JSON.stringify(result, null, 2));
+    } else {
+      if (result.success) {
+        renderBox(`🔎 OSINT SEARCH RESULT`, JSON.stringify(result.data, null, 2), 'cyan');
+      } else {
+        logError(result.error);
+      }
+    }
+    process.exit(result.success ? 0 : 1);
+  }
+
   // Direct plugin execution flag
   const runPluginIdx = args.indexOf('--run-plugin');
   if (runPluginIdx !== -1) {

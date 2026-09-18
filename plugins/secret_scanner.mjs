@@ -186,8 +186,9 @@ export async function execute(args) {
   const findings = [];
   const stats    = { count:0, skipped:0 };
 
+  let st;
   try {
-    const st = await fs.stat(rootPath);
+    st = await fs.stat(rootPath);
     if (st.isFile()) {
       stats.count=1;
       findings.push(...await scanFile(rootPath,opts));
