@@ -1,6 +1,6 @@
 {
   "name": "gemini-sec-agent",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Autonomous AI-powered Cybersecurity & DevSecOps Workstation driven by Google Gemini API",
   "type": "module",
   "main": "src/cli.mjs",
@@ -15,6 +15,7 @@
   "scripts": {
     "start": "node bin/agy.mjs",
     "dev": "node bin/agy.mjs",
+    "lint": "node --check bin/agy.mjs src/*.mjs plugins/*.mjs",
     "test": "node --test tests/*.test.mjs"
   },
   "keywords": [

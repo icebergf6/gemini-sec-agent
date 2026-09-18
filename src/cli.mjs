@@ -1,7 +1,11 @@
 import readline from 'readline';
+import fs from 'fs';
+import path from 'path';
 import { agent } from './agent.mjs';
 import { keyManager, config } from './config.mjs';
 import { pluginLoader } from './plugin_loader.mjs';
+import { generateReport, formatTerminal, formatMarkdown, formatJSON, writeReport } from './report.mjs';
+import { sanitizeInput, isPhoneLike } from './utils.mjs';
 import {
   colors, c,
   printBanner,
@@ -18,6 +22,22 @@ import {
   logWarn,
   logError
 } from './ui.mjs';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SESSION STATE
+// ─────────────────────────────────────────────────────────────────────────────
+const sessionHistory = [];    // Command history
+let lastResult = null;        // Last tool execution result (for /export)
+let lastPluginName = '';      // Last plugin name used
+
+function recordHistory(cmd) {
+  sessionHistory.push({ cmd, timestamp: new Date().toISOString() });
+  if (sessionHistory.length > 50) sessionHistory.shift();
+}
+
+function storeLastResult(data, pluginName, durationMs) {
+  lastResult = { data, pluginName, durationMs };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CLI ARGS PARSER  (resilient against PowerShell quoting quirks)
@@ -91,11 +111,11 @@ export async function runOneShot(prompt, opts = {}) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// OSINT & RESEARCH TOOLKIT EXECUTORS
+// OSINT & RESEARCH TOOLKIT EXECUTORS (with integrated report layer)
 // ─────────────────────────────────────────────────────────────────────────────
 export async function executeUsernameSearch(target, opts = {}) {
   await pluginLoader.loadPlugins();
-  const cleanTarget = String(target || '').trim();
+  const cleanTarget = sanitizeInput(String(target || ''));
   if (!cleanTarget) {
     logWarn('Target username tidak boleh kosong.');
     return;
@@ -106,33 +126,23 @@ export async function executeUsernameSearch(target, opts = {}) {
   if (!opts.json) spinner.stop();
 
   if (opts.json) {
-    console.log(JSON.stringify(res, null, 2));
+    console.log(formatJSON(res.data, { pluginName: 'osint_search', durationMs: res.durationMs }));
     return;
   }
 
   if (res.success) {
-    const data = res.data;
-    let output = `${c.bYellow}Target Query:${c.reset} @${data.query}\n` +
-                 `${c.bYellow}Platforms Checked:${c.reset} ${data.totalPlatformsChecked}\n` +
-                 `${c.bYellow}Profiles Found:${c.reset} ${data.foundCount > 0 ? c.bGreen + data.foundCount : c.bRed + '0'}${c.reset}\n\n`;
-
-    if (data.foundProfiles && data.foundProfiles.length > 0) {
-      output += `${c.bGreen}✔ Akun Terverifikasi Ditemukan:${c.reset}\n`;
-      data.foundProfiles.forEach(p => {
-        output += `  • ${c.bold}${p.platform.padEnd(14)}${c.reset} → ${c.bCyan}${p.url}${c.reset}\n`;
-      });
-    } else {
-      output += `  ${c.dim}Tidak ditemukan profil publik yang cocok di platform terdaftar.${c.reset}\n`;
-    }
-
-    if (data.dorks) {
-      output += `\n${c.bMagenta}🔗 Tautan Dork & Engine Tambahan:${c.reset}\n` +
-                `  • Google Search:      ${c.dim}${data.dorks.google}${c.reset}\n` +
-                `  • Profile Aggregator: ${c.dim}${data.dorks.googleProfiles}${c.reset}\n` +
-                `  • WhatsMyName DB:     ${c.dim}${data.dorks.whatsMyName}${c.reset}`;
-    }
-
+    storeLastResult(res.data, 'osint_search', res.durationMs);
+    const output = formatTerminal(res.data, { pluginName: 'osint_search', durationMs: res.durationMs });
     renderBox(`👤 OSINT USERNAME FOOTPRINT (${res.durationMs}ms)`, output, 'cyan');
+
+    // Auto-save report
+    if (opts.report) {
+      const filePath = writeReport(
+        formatMarkdown(res.data, { pluginName: 'osint_search', durationMs: res.durationMs }),
+        { pluginName: `username-${cleanTarget}` }
+      );
+      logSuccess(`Laporan disimpan: ${c.bCyan}${filePath}${c.reset}`);
+    }
   } else {
     logError(res.error);
   }
@@ -140,7 +150,7 @@ export async function executeUsernameSearch(target, opts = {}) {
 
 export async function executePhoneSearch(target, opts = {}) {
   await pluginLoader.loadPlugins();
-  const cleanTarget = String(target || '').trim();
+  const cleanTarget = sanitizeInput(String(target || ''));
   if (!cleanTarget) {
     logWarn('Target nomor telepon tidak boleh kosong.');
     return;
@@ -151,26 +161,22 @@ export async function executePhoneSearch(target, opts = {}) {
   if (!opts.json) spinner.stop();
 
   if (opts.json) {
-    console.log(JSON.stringify(res, null, 2));
+    console.log(formatJSON(res.data, { pluginName: 'osint_search', durationMs: res.durationMs }));
     return;
   }
 
   if (res.success) {
-    const data = res.data;
-    let output = `${c.bYellow}Nomor Input:${c.reset} ${data.query}\n` +
-                 `${c.bYellow}Format Standar E.164:${c.reset} ${c.bGreen}${data.parsed.e164Format}${c.reset}\n` +
-                 `${c.bYellow}Format Nasional:${c.reset} ${data.parsed.nationalFormat}\n` +
-                 `${c.bYellow}Negara Asal:${c.reset} ${data.location.flag} ${data.location.country} (${data.location.isoCode})\n` +
-                 `${c.bYellow}Provider / Operator:${c.reset} ${c.bCyan}${data.telecom.carrier}${c.reset}\n` +
-                 `${c.bYellow}Tipe Saluran:${c.reset} ${data.telecom.lineType}\n\n` +
-                 `${c.bMagenta}🔗 Quick Actions & Direct OSINT:${c.reset}\n` +
-                 `  • Chat WhatsApp:      ${c.dim}${data.osintLinks.whatsappChat}${c.reset}\n` +
-                 `  • Chat Telegram:      ${c.dim}${data.osintLinks.telegramChat}${c.reset}\n` +
-                 `  • Truecaller Direct:  ${c.dim}${data.osintLinks.truecallerSearch}${c.reset}\n` +
-                 `  • Google Search Dork: ${c.dim}${data.osintLinks.googleDork}${c.reset}\n` +
-                 `  • Sync.me Database:   ${c.dim}${data.osintLinks.syncMe}${c.reset}`;
-
+    storeLastResult(res.data, 'osint_search', res.durationMs);
+    const output = formatTerminal(res.data, { pluginName: 'osint_search', durationMs: res.durationMs });
     renderBox(`📞 OSINT PHONE & TELECOM INTELLIGENCE (${res.durationMs}ms)`, output, 'green');
+
+    if (opts.report) {
+      const filePath = writeReport(
+        formatMarkdown(res.data, { pluginName: 'osint_search', durationMs: res.durationMs }),
+        { pluginName: `phone-${cleanTarget.replace(/\+/g, '')}` }
+      );
+      logSuccess(`Laporan disimpan: ${c.bCyan}${filePath}${c.reset}`);
+    }
   } else {
     logError(res.error);
   }
@@ -178,7 +184,7 @@ export async function executePhoneSearch(target, opts = {}) {
 
 export async function executeInfoResearch(query, opts = {}) {
   await pluginLoader.loadPlugins();
-  const cleanQuery = String(query || '').trim();
+  const cleanQuery = sanitizeInput(String(query || ''));
   if (!cleanQuery) {
     logWarn('Query/topik penelitian intelijen tidak boleh kosong.');
     return;
@@ -195,14 +201,24 @@ Format laporan terstruktur:
 3. ⚠️ Penilaian Risiko (Threat Landscape & Potential Exposure)
 4. 🛠️ Langkah Investigasi Lanjutan & Rekomendasi Mitigasi / Sumber Verifikasi`;
 
+    const startTime = Date.now();
     const result = await agent.sendMessage(prompt, (t) => {
       if (!opts.json) spinner.update(t);
     });
+    const durationMs = Date.now() - startTime;
+
     if (!opts.json) {
       spinner.stop();
+      storeLastResult({ query: cleanQuery, intelligence: result }, 'deep_intel', durationMs);
       renderBox(`🔬 DEEP INTEL RESEARCH: ${cleanQuery.toUpperCase()}`, result, 'magenta');
+
+      if (opts.report) {
+        const mdContent = `# 🔬 Deep Intelligence Research Report\n\n**Query:** ${cleanQuery}\n**Duration:** ${durationMs}ms\n**Timestamp:** ${new Date().toISOString()}\n\n---\n\n${result}\n\n---\n*Generated by AGY Gemini Sec Agent*`;
+        const filePath = writeReport(mdContent, { pluginName: `intel-${cleanQuery.slice(0, 30).replace(/\s+/g, '_')}` });
+        logSuccess(`Laporan disimpan: ${c.bCyan}${filePath}${c.reset}`);
+      }
     } else {
-      console.log(JSON.stringify({ status: 'success', query: cleanQuery, intelligence: result }, null, 2));
+      console.log(JSON.stringify({ status: 'success', query: cleanQuery, intelligence: result, durationMs }, null, 2));
     }
   } catch (err) {
     if (!opts.json) {
@@ -242,6 +258,9 @@ export async function startInteractiveREPL() {
 
     // Strip accidental 'agy ' prefix typed inside REPL
     if (input.startsWith('agy ')) input = input.slice(4).trim();
+
+    // Record history
+    recordHistory(input);
 
     // ── SYSTEM COMMANDS ────────────────────────────────────────────────────────
 
@@ -284,6 +303,52 @@ export async function startInteractiveREPL() {
       return;
     }
 
+    // ── /history ──────────────────────────────────────────────────────────────
+    if (['/history', 'history'].includes(input)) {
+      console.log('');
+      console.log(`  ${c.bCyan}${c.bold}📜  SESSION COMMAND HISTORY${c.reset}`);
+      console.log(`  ${c.bBlack}${'─'.repeat(60)}${c.reset}`);
+      if (sessionHistory.length === 0) {
+        console.log(`  ${c.dim}  (No commands recorded yet)${c.reset}`);
+      } else {
+        const recent = sessionHistory.slice(-15);
+        recent.forEach((h, i) => {
+          const time = h.timestamp.split('T')[1].slice(0, 8);
+          console.log(`  ${c.bBlack}${String(i + 1).padStart(3)}.${c.reset} ${c.dim}[${time}]${c.reset} ${c.bCyan}${h.cmd}${c.reset}`);
+        });
+      }
+      console.log(`  ${c.bBlack}${'─'.repeat(60)}${c.reset}\n`);
+      rl.prompt();
+      return;
+    }
+
+    // ── /export [format] ─────────────────────────────────────────────────────
+    if (/^(?:\/export|export)(\s|$)/i.test(input)) {
+      if (!lastResult) {
+        logWarn('Belum ada hasil yang bisa diekspor. Jalankan perintah terlebih dahulu.');
+        rl.prompt();
+        return;
+      }
+      const formatArg = input.replace(/^(?:\/export|export)\s*/i, '').trim().toLowerCase() || 'md';
+      const fmt = ['json', 'md', 'markdown'].includes(formatArg) ? formatArg : 'md';
+      const { data, pluginName, durationMs } = lastResult;
+
+      let content;
+      if (fmt === 'json') {
+        content = formatJSON(data, { pluginName, durationMs });
+      } else {
+        content = formatMarkdown(data, { pluginName, durationMs });
+      }
+
+      const filePath = writeReport(content, {
+        format: fmt === 'json' ? 'json' : 'md',
+        pluginName: pluginName || 'report'
+      });
+      logSuccess(`Laporan berhasil disimpan: ${c.bCyan}${filePath}${c.reset}`);
+      rl.prompt();
+      return;
+    }
+
     // ── /addkey <key> ──────────────────────────────────────────────────────────
     if (input.startsWith('/addkey') || input.startsWith('addkey ')) {
       const key = input.replace(/^(?:\/addkey|addkey)\s*/, '').trim();
@@ -293,6 +358,10 @@ export async function startInteractiveREPL() {
         keyManager.addKey(key);
         agent.initSession();
         logSuccess(`API key added. Pool size: ${c.bGreen}${keyManager.keys.length}${c.reset}`);
+        // Security: clear readline history to prevent key leakage
+        if (rl.history) {
+          rl.history = rl.history.filter(h => !h.includes(key));
+        }
       }
       rl.prompt();
       return;
@@ -313,7 +382,7 @@ export async function startInteractiveREPL() {
       return;
     }
 
-    // ── /kit [1|2|3|username|phone|info] [target] ──────────────────────────────
+    // ── /kit [1|2|3|4|username|phone|info|search] [target] ──────────────────
     if (/^(?:\/kit|kit)(\s|$)/i.test(input)) {
       const rest = input.replace(/^(?:\/kit|kit)\s*/i, '').trim();
 
@@ -359,9 +428,34 @@ export async function startInteractiveREPL() {
         return;
       }
 
+      if (rest.startsWith('4') || rest.startsWith('search')) {
+        const subTarget = rest.replace(/^(?:4|search)\s*/i, '').trim();
+        if (subTarget) {
+          if (isPhoneLike(subTarget)) {
+            await executePhoneSearch(subTarget);
+          } else {
+            await executeUsernameSearch(subTarget);
+          }
+          rl.prompt();
+        } else {
+          rl.question(`  ${c.bCyan}🔎 Masukkan target (username atau nomor telepon):${c.reset} `, async (ans) => {
+            const t = ans.trim();
+            if (t) {
+              if (isPhoneLike(t)) {
+                await executePhoneSearch(t);
+              } else {
+                await executeUsernameSearch(t);
+              }
+            }
+            rl.prompt();
+          });
+        }
+        return;
+      }
+
       // If user typed: /kit <anything_else>
       if (rest) {
-        if (/^(\+|08|62|\d{7,15}$)/.test(rest.replace(/[\s\-()]/g, ''))) {
+        if (isPhoneLike(rest)) {
           await executePhoneSearch(rest);
         } else {
           await executeUsernameSearch(rest);
@@ -372,7 +466,7 @@ export async function startInteractiveREPL() {
 
       // Default /kit without args -> show interactive menu
       renderKitMenu();
-      rl.question(`  ${c.bCyan}Pilih opsi [1/2/3] atau ketik query:${c.reset} `, async (choice) => {
+      rl.question(`  ${c.bCyan}Pilih opsi [1/2/3/4] atau ketik query:${c.reset} `, async (choice) => {
         const ch = choice.trim();
         if (!ch) { rl.prompt(); return; }
 
@@ -391,6 +485,15 @@ export async function startInteractiveREPL() {
             if (ans.trim()) await executeInfoResearch(ans.trim());
             rl.prompt();
           });
+        } else if (ch === '4' || ch.toLowerCase() === 'search') {
+          rl.question(`  ${c.bCyan}🔎 Masukkan target (username/nomor):${c.reset} `, async (ans) => {
+            const t = ans.trim();
+            if (t) {
+              if (isPhoneLike(t)) await executePhoneSearch(t);
+              else await executeUsernameSearch(t);
+            }
+            rl.prompt();
+          });
         } else if (ch.startsWith('1 ') || ch.startsWith('username ')) {
           await executeUsernameSearch(ch.replace(/^(?:1|username)\s+/i, ''));
           rl.prompt();
@@ -400,8 +503,13 @@ export async function startInteractiveREPL() {
         } else if (ch.startsWith('3 ') || ch.startsWith('info ')) {
           await executeInfoResearch(ch.replace(/^(?:3|info)\s+/i, ''));
           rl.prompt();
+        } else if (ch.startsWith('4 ') || ch.startsWith('search ')) {
+          const t = ch.replace(/^(?:4|search)\s+/i, '');
+          if (isPhoneLike(t)) await executePhoneSearch(t);
+          else await executeUsernameSearch(t);
+          rl.prompt();
         } else {
-          if (/^(\+|08|62|\d{7,15}$)/.test(ch.replace(/[\s\-()]/g, ''))) {
+          if (isPhoneLike(ch)) {
             await executePhoneSearch(ch);
           } else {
             await executeUsernameSearch(ch);
@@ -464,7 +572,7 @@ export async function startInteractiveREPL() {
         rl.question(`  ${c.bCyan}🔎 Masukkan target (username atau nomor telepon):${c.reset} `, async (ans) => {
           const t = ans.trim();
           if (t) {
-            if (/^(\+|08|62|\d{7,15}$)/.test(t.replace(/[\s\-()]/g, ''))) {
+            if (isPhoneLike(t)) {
               await executePhoneSearch(t);
             } else {
               await executeUsernameSearch(t);
@@ -474,7 +582,7 @@ export async function startInteractiveREPL() {
         });
         return;
       }
-      if (/^(\+|08|62|\d{7,15}$)/.test(rest.replace(/[\s\-()]/g, ''))) {
+      if (isPhoneLike(rest)) {
         await executePhoneSearch(rest);
       } else {
         await executeUsernameSearch(rest);
@@ -503,7 +611,9 @@ export async function startInteractiveREPL() {
       spinner.stop();
 
       if (res.success) {
-        renderBox(`🛡️  ${name.toUpperCase()}  (${res.durationMs}ms)`, JSON.stringify(res.data, null, 2), 'green');
+        storeLastResult(res.data, name, res.durationMs);
+        const output = formatTerminal(res.data, { pluginName: name, durationMs: res.durationMs });
+        renderBox(`🛡️  ${name.toUpperCase()}  (${res.durationMs}ms)`, output, 'green');
       } else {
         logError(res.error);
       }

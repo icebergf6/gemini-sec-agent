@@ -82,7 +82,7 @@ export function printBanner(modelName = 'gemini-2.5-flash', keyCount = 1, plugin
     `${c.bCyan} ╚═╝  ╚═╝ ╚═════╝    ╚═╝   ${c.reset}    ${c.bMagenta}╚══════╝╚══════╝ ╚═════╝ ${c.reset}`,
   ];
 
-  const subline = `  ${c.bYellow}⚡ GEMINI SEC AGENT${c.reset} ${c.bBlack}•${c.reset} ${c.dim}Autonomous DevSecOps & OSINT Workstation${c.reset}`;
+  const subline = `  ${c.bYellow}⚡ GEMINI SEC AGENT${c.reset} ${c.bBlack}•${c.reset} ${c.dim}Autonomous DevSecOps & OSINT Workstation${c.reset}  ${c.bBlack}v2.0.0${c.reset}`;
 
   const statusPills = [
     `${c.bgGreen}${c.black}${c.bold} ● ONLINE ${c.reset}`,
@@ -96,7 +96,7 @@ export function printBanner(modelName = 'gemini-2.5-flash', keyCount = 1, plugin
     `${c.bBlack}Host:${c.reset} ${c.bCyan}${os.hostname()}${c.reset}`
   ];
 
-  const quickShortcuts = `  ${c.bCyan}${c.bold}🧰 Quick Shortcuts:${c.reset} ${c.bYellow}/kit${c.reset} ${c.dim}(OSINT Hub)${c.reset} ${c.bBlack}•${c.reset} ${c.bGreen}/username${c.reset} ${c.bBlack}•${c.reset} ${c.bGreen}/phone${c.reset} ${c.bBlack}•${c.reset} ${c.bMagenta}/info${c.reset} ${c.bBlack}•${c.reset} ${c.bCyan}/plugins${c.reset} ${c.bBlack}•${c.reset} ${c.bBlack}/help${c.reset}`;
+  const quickShortcuts = `  ${c.bCyan}${c.bold}🧰 Quick Shortcuts:${c.reset} ${c.bYellow}/kit${c.reset} ${c.dim}(OSINT Hub)${c.reset} ${c.bBlack}•${c.reset} ${c.bGreen}/username${c.reset} ${c.bBlack}•${c.reset} ${c.bGreen}/phone${c.reset} ${c.bBlack}•${c.reset} ${c.bMagenta}/info${c.reset} ${c.bBlack}•${c.reset} ${c.bCyan}/search${c.reset} ${c.bBlack}•${c.reset} ${c.bCyan}/plugins${c.reset} ${c.bBlack}•${c.reset} ${c.bBlack}/help${c.reset}`;
 
   console.log('\n' + hr);
   logo.forEach(l => console.log(l));
@@ -109,9 +109,10 @@ export function printBanner(modelName = 'gemini-2.5-flash', keyCount = 1, plugin
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SPINNER
+// SPINNER (Enhanced animation with richer frames)
 // ─────────────────────────────────────────────────────────────────────────────
-const FRAMES = ['⠋','⠙','⠹','⠸','⠼','⠴','⠦','⠧','⠇','⠏'];
+const FRAMES = ['⣾','⣽','⣻','⢿','⡿','⣟','⣯','⣷'];
+const PHASE_COLORS = [c.bCyan, c.bMagenta, c.bYellow, c.bGreen, c.bBlue, c.bRed];
 
 export function createSpinner(initial = 'Processing...') {
   if (!isTTY) {
@@ -136,7 +137,8 @@ export function createSpinner(initial = 'Processing...') {
       process.stdout.write('\x1b[?25l');
       timer = setInterval(() => {
         clear();
-        process.stdout.write(`  ${c.bCyan}${FRAMES[idx++ % FRAMES.length]}${c.reset}  ${c.dim}${text}${c.reset}`);
+        const color = PHASE_COLORS[Math.floor(idx / FRAMES.length) % PHASE_COLORS.length];
+        process.stdout.write(`  ${color}${FRAMES[idx++ % FRAMES.length]}${c.reset}  ${c.dim}${text}${c.reset}`);
       }, 80);
     },
     update(t) { text = t; },
@@ -242,7 +244,7 @@ export function renderKeyTable(maskedKeys) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// OSINT & RESEARCH TOOLKIT MENU (/kit)
+// OSINT & RESEARCH TOOLKIT MENU (/kit) — Now includes /search [4]
 // ─────────────────────────────────────────────────────────────────────────────
 export function renderKitMenu() {
   const w = cols();
@@ -250,16 +252,18 @@ export function renderKitMenu() {
   console.log(`  ${c.bCyan}${c.bold}┌${'─'.repeat(w - 4)}┐${c.reset}`);
   console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bCyan}🧰  AGY OSINT & INTEL RESEARCH TOOLKIT (/kit)${c.reset}${' '.repeat(Math.max(0, w - 48))}${c.bCyan}│${c.reset}`);
   console.log(`  ${c.bCyan}├${'─'.repeat(w - 4)}┤${c.reset}`);
-  console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bYellow}[1] /username <user>${c.reset}     ${c.dim}Pindai jejak akun di 20+ platform media sosial.${c.reset}`);
-  console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bGreen}[2] /phone <number>${c.reset}      ${c.dim}Intelijen nomor telepon, provider/operator, & chat link.${c.reset}`);
-  console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bMagenta}[3] /info <topik/query>${c.reset}  ${c.dim}Penelitian mendalam & sintesis intelijen AI berbasis Gemini.${c.reset}`);
+  console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bYellow}[1] /username <user>${c.reset}       ${c.dim}Pindai jejak akun di 20+ platform media sosial.${c.reset}`);
+  console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bGreen}[2] /phone <number>${c.reset}        ${c.dim}Intelijen nomor telepon, provider/operator, & chat link.${c.reset}`);
+  console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bMagenta}[3] /info <topik/query>${c.reset}    ${c.dim}Penelitian mendalam & sintesis intelijen AI berbasis Gemini.${c.reset}`);
+  console.log(`  ${c.bCyan}│${c.reset}  ${c.bold}${c.bCyan}[4] /search <target>${c.reset}       ${c.dim}Universal OSINT — auto-deteksi username atau nomor telepon.${c.reset}`);
   console.log(`  ${c.bCyan}├${'─'.repeat(w - 4)}┤${c.reset}`);
-  console.log(`  ${c.bCyan}│${c.reset}  ${c.bBlack}Tip: ${c.reset}${c.dim}Ketik perintah langsung misal: ${c.reset}${c.bCyan}/username octocat${c.reset} ${c.dim}atau${c.reset} ${c.bGreen}/phone 08123456789${c.reset} ${c.dim}atau${c.reset} ${c.bMagenta}/info "Topik"${c.reset}`);
+  console.log(`  ${c.bCyan}│${c.reset}  ${c.bBlack}Tip: ${c.reset}${c.dim}Ketik langsung: ${c.reset}${c.bCyan}/username octocat${c.reset} ${c.dim}atau${c.reset} ${c.bGreen}/phone 08123456789${c.reset} ${c.dim}atau${c.reset} ${c.bMagenta}/info "Topik"${c.reset} ${c.dim}atau${c.reset} ${c.bCyan}/search target${c.reset}`);
+  console.log(`  ${c.bCyan}│${c.reset}  ${c.bBlack}Export: ${c.reset}${c.dim}Setelah menjalankan tools, ketik ${c.reset}${c.bYellow}/export${c.reset} ${c.dim}untuk menyimpan laporan ke file.${c.reset}`);
   console.log(`  ${c.bCyan}└${'─'.repeat(w - 4)}┘${c.reset}\n`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HELP TABLE
+// HELP TABLE (Updated with new commands)
 // ─────────────────────────────────────────────────────────────────────────────
 export function renderHelp() {
   const w   = cols();
@@ -268,31 +272,34 @@ export function renderHelp() {
 
   console.log('');
   console.log(`  ${c.bMagenta}┌${'─'.repeat(w - 4)}┐${c.reset}`);
-  console.log(`  ${c.bMagenta}│${c.reset}  ${c.bold}${c.bMagenta}⚡  AGY COMMAND REFERENCE${c.reset}`);
-  console.log(`  ${c.bMagenta}├──────────────────────────── SLASH COMMANDS ─${('─').repeat(Math.max(0, w - 50))}┤${c.reset}`);
-  console.log(row('/help  · -h',            'Show this help menu'));
+  console.log(`  ${c.bMagenta}│${c.reset}  ${c.bold}${c.bMagenta}⚡  AGY COMMAND REFERENCE  ${c.dim}v2.0.0${c.reset}`);
+  console.log(`  ${c.bMagenta}├──────────────── OSINT & INTELLIGENCE TOOLKIT ─${('─').repeat(Math.max(0, w - 52))}┤${c.reset}`);
   console.log(row('/kit',                   'Open OSINT & Intel Research Toolkit hub'));
   console.log(row('/username <user>',       'Scan social media footprint across 20+ platforms'));
   console.log(row('/phone <number>',        'Phone number OSINT, carrier lookup & direct chat links'));
   console.log(row('/info <query>',          'Deep AI research & intelligence investigation'));
-  console.log(row('/search <target>',       'Universal OSINT search (auto-detects target)'));
+  console.log(row('/search <target>',       'Universal OSINT search (auto-detects target type)'));
+  console.log(`  ${c.bMagenta}├──────────────────── DEVSECOPS COMMANDS ─${('─').repeat(Math.max(0, w - 46))}┤${c.reset}`);
   console.log(row('/plugins',               'List all loaded cybersecurity plugins'));
   console.log(row('/run <plugin> [args]',   'Execute plugin directly (no LLM)'));
+  console.log(row('/reload',                'Hot-reload all plugins from disk'));
+  console.log(`  ${c.bMagenta}├──────────────────── SESSION & OUTPUT ──${('─').repeat(Math.max(0, w - 45))}┤${c.reset}`);
+  console.log(row('/export [json|md]',      'Export last result to a report file'));
+  console.log(row('/history',               'Show session command history'));
   console.log(row('/model [name]',          'View or switch active Gemini model'));
   console.log(row('/keys',                  'Show API key rotation pool status'));
   console.log(row('/addkey <key>',          'Add a new API key to session pool'));
-  console.log(row('/reload',                'Hot-reload all plugins from disk'));
   console.log(row('/clear  · cls',          'Clear screen and reprint banner'));
   console.log(row('/exit   · quit',         'Exit AGY terminal session'));
-  console.log(`  ${c.bMagenta}├────────────────────────────── CLI FLAGS ─────${('─').repeat(Math.max(0, w - 51))}┤${c.reset}`);
+  console.log(`  ${c.bMagenta}├────────────────────── CLI FLAGS ─────${('─').repeat(Math.max(0, w - 43))}┤${c.reset}`);
   console.log(row('agy --kit',              'Show OSINT Toolkit guide'));
   console.log(row('agy --username <user>',  'Direct OSINT username lookup'));
   console.log(row('agy --phone <number>',   'Direct phone number OSINT lookup'));
   console.log(row('agy --info "query"',     'Direct AI deep research & intelligence'));
+  console.log(row('agy --search <target>',  'Universal OSINT search from shell'));
   console.log(row('agy -p "prompt"',        'One-shot prompt (non-interactive)'));
   console.log(row('agy --run-plugin <n>',   'Execute plugin directly from shell'));
-  console.log(row('agy --list-plugins',     'List plugins and exit'));
-  console.log(row('agy --keys',             'Show API key pool and exit'));
+  console.log(row('agy --report',           'Auto-save report file on execution'));
   console.log(row('agy --json',             'Machine-readable JSON output (pipe to jq)'));
   console.log(row('cat file | agy "query"', 'Pipe content into AGY for analysis'));
   console.log(`  ${c.bMagenta}└${'─'.repeat(w - 4)}┘${c.reset}\n`);

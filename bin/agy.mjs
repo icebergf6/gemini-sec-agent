@@ -7,6 +7,8 @@ import { startInteractiveREPL, runOneShot, showHelp, parseCliArgs, executeUserna
 import { pluginLoader } from '../src/plugin_loader.mjs';
 import { keyManager, config } from '../src/config.mjs';
 import { colors, c, logSuccess, logError, logWarn, renderBox, renderPluginList, renderKeyTable, renderKitMenu } from '../src/ui.mjs';
+import { isPhoneLike } from '../src/utils.mjs';
+import { generateReport, formatTerminal, writeReport } from '../src/report.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +56,9 @@ async function main() {
     process.exit(0);
   }
 
+  const withReport = args.includes('--report');
+  const withJson = args.includes('--json');
+
   // OSINT username CLI flag
   const userIdx = args.indexOf('--username') !== -1 ? args.indexOf('--username') : args.indexOf('-u');
   if (userIdx !== -1) {
@@ -62,7 +67,7 @@ async function main() {
       logError('Target username required. Example: agy --username octocat');
       process.exit(1);
     }
-    await executeUsernameSearch(target, { json: args.includes('--json') });
+    await executeUsernameSearch(target, { json: withJson, report: withReport });
     process.exit(0);
   }
 
@@ -74,7 +79,7 @@ async function main() {
       logError('Target phone number required. Example: agy --phone +628123456789');
       process.exit(1);
     }
-    await executePhoneSearch(target, { json: args.includes('--json') });
+    await executePhoneSearch(target, { json: withJson, report: withReport });
     process.exit(0);
   }
 
@@ -86,7 +91,7 @@ async function main() {
       logError('Query/topic required for --info. Example: agy --info "CVE-2024-3094"');
       process.exit(1);
     }
-    await executeInfoResearch(query, { json: args.includes('--json') });
+    await executeInfoResearch(query, { json: withJson, report: withReport });
     process.exit(0);
   }
 
@@ -98,10 +103,10 @@ async function main() {
       logError('Target username or phone number required. Example: agy --search octocat');
       process.exit(1);
     }
-    if (/^(\+|08|62|\d{7,15}$)/.test(target.replace(/[\s\-()]/g, ''))) {
-      await executePhoneSearch(target, { json: args.includes('--json') });
+    if (isPhoneLike(target)) {
+      await executePhoneSearch(target, { json: withJson, report: withReport });
     } else {
-      await executeUsernameSearch(target, { json: args.includes('--json') });
+      await executeUsernameSearch(target, { json: withJson, report: withReport });
     }
     process.exit(0);
   }
@@ -119,11 +124,16 @@ async function main() {
 
     await pluginLoader.loadPlugins();
     const result = await pluginLoader.execute(pluginName, parsedArgs);
-    if (args.includes('--json')) {
+    if (withJson) {
       console.log(JSON.stringify(result, null, 2));
     } else {
       if (result.success) {
-        renderBox(`HASIL PLUGIN: ${pluginName}`, JSON.stringify(result.data, null, 2), 'green');
+        const report = generateReport(pluginName, parsedArgs, result.data);
+        console.log(formatTerminal(report));
+        if (withReport) {
+          const writtenPath = writeReport(report, 'md');
+          logSuccess(`Report file tersimpan: ${writtenPath}`);
+        }
       } else {
         logError(result.error);
       }
