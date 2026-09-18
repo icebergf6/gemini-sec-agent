@@ -1,0 +1,38 @@
+{
+  "name": "gemini-sec-agent",
+  "version": "1.0.0",
+  "description": "Autonomous AI-powered Cybersecurity & DevSecOps Workstation driven by Google Gemini API",
+  "type": "module",
+  "main": "src/cli.mjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/icebergf6/gemini-sec-agent.git"
+  },
+  "bin": {
+    "agy": "./bin/agy.mjs",
+    "gemini-cli": "./bin/agy.mjs"
+  },
+  "scripts": {
+    "start": "node bin/agy.mjs",
+    "dev": "node bin/agy.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "keywords": [
+    "gemini",
+    "cli",
+    "ai-agent",
+    "cybersecurity",
+    "devsecops",
+    "threat-hunting",
+    "secret-scanner",
+    "port-scanner",
+    "offsec",
+    "defsec"
+  ],
+  "author": "LEO SYAFIQ",
+  "license": "MIT",
+  "dependencies": {
+    "@google/genai": "^2.22.0",
+    "@google/generative-ai": "^0.24.1"
+  }
+}
