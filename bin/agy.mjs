@@ -8,7 +8,7 @@ import { pluginLoader } from '../src/plugin_loader.mjs';
 import { keyManager, config } from '../src/config.mjs';
 import { colors, c, logSuccess, logError, logWarn, renderBox, renderPluginList, renderKeyTable, renderKitMenu } from '../src/ui.mjs';
 import { isPhoneLike } from '../src/utils.mjs';
-import { generateReport, formatTerminal, writeReport } from '../src/report.mjs';
+import { generateReport, formatTerminal, formatMarkdown, writeReport } from '../src/report.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -128,10 +128,11 @@ async function main() {
       console.log(JSON.stringify(result, null, 2));
     } else {
       if (result.success) {
-        const report = generateReport(pluginName, parsedArgs, result.data);
-        console.log(formatTerminal(report));
+        const terminalOut = formatTerminal(result.data, { pluginName, durationMs: result.durationMs });
+        console.log(terminalOut);
         if (withReport) {
-          const writtenPath = writeReport(report, 'md');
+          const mdContent = formatMarkdown(result.data, { pluginName, durationMs: result.durationMs });
+          const writtenPath = writeReport(mdContent, { format: 'md', pluginName });
           logSuccess(`Report file tersimpan: ${writtenPath}`);
         }
       } else {

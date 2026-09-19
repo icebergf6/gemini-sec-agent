@@ -232,13 +232,24 @@ function calcScore(findings) {
 }
 
 export async function execute(args) {
-  let url = args.target;
+  if (!args || !args.target) {
+    throw new Error('Target URL harus diisi. Contoh: https://example.com');
+  }
+  let url = String(args.target).trim();
+  if (!url) {
+    throw new Error('Target URL tidak boleh kosong.');
+  }
   if (!url.startsWith('http')) url = `https://${url}`;
   const ua = args.userAgent || 'AGY-SecAudit/2.0';
   const followRedir = args.followRedirects !== false;
   const checkDns    = args.checkDns !== false;
 
-  const parsed   = new URL(url);
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (err) {
+    throw new Error(`Format URL tidak valid: "${args.target}"`);
+  }
   const hostname = parsed.hostname;
 
   // Redirect chain

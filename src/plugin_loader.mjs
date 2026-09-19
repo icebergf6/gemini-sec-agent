@@ -114,6 +114,14 @@ class PluginLoader {
       const result = await plugin.execute(args);
       const durationMs = Date.now() - startTime;
 
+      if (result && typeof result === 'object' && result.success === false) {
+        return {
+          success: false,
+          durationMs,
+          error: result.error || `Eksekusi plugin '${name}' gagal.`
+        };
+      }
+
       return {
         success: true,
         durationMs,

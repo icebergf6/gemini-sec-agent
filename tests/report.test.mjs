@@ -131,3 +131,55 @@ test('8. generateReport formats and optionally saves reports', () => {
     fs.unlinkSync(savedRes.filePath);
   } catch {}
 });
+
+test('9. formatSysOps formats posture score and listening sockets', () => {
+  const sysData = {
+    privilege: { elevated: false, user: 'testuser' },
+    hardeningScore: 85,
+    listeningSockets: [
+      { proto: 'TCP', port: 8080, localAddress: '127.0.0.1:8080', pid: '1234' }
+    ]
+  };
+  const termOut = formatTerminal(sysData, { pluginName: 'sys_ops', durationMs: 50 });
+  assert.ok(termOut.includes('SYSTEM & PRIVILEGE POSTURE'));
+  assert.ok(termOut.includes('85/100'));
+  assert.ok(termOut.includes('8080'));
+
+  const mdOut = formatMarkdown(sysData, { pluginName: 'sys_ops', durationMs: 50 });
+  assert.ok(mdOut.includes('# 🖥️ System Posture Audit Report'));
+  assert.ok(mdOut.includes('85/100'));
+  assert.ok(mdOut.includes('8080'));
+});
+
+test('10. formatLogHunt correctly formats threat counts and incident lists', () => {
+  const logData = {
+    linesAnalyzed: 500,
+    totalThreatsFound: 2,
+    findingsByCategory: { SQL_INJECTION: 2 },
+    findings: [
+      { ip: '1.2.3.4', type: 'SQL_INJECTION', severity: 'HIGH', lineNum: 10, snippet: 'SELECT * FROM users WHERE id=1 OR 1=1' }
+    ]
+  };
+  const termOut = formatTerminal(logData, { pluginName: 'log_hunter', durationMs: 80 });
+  assert.ok(termOut.includes('Total Threats:'));
+  assert.ok(termOut.includes('SQL_INJECTION'));
+  assert.ok(termOut.includes('1.2.3.4'));
+});
+
+test('11. formatCodePatch correctly formats diffs and backup info', () => {
+  const patchData = {
+    targetFile: 'src/app.js',
+    operation: 'replace',
+    backupCreated: 'src/app.js.20260919.bak',
+    changedLines: 1,
+    diffPreview: '- const x = 1;\n+ const x = 2;',
+    message: 'Patch applied successfully'
+  };
+  const termOut = formatTerminal(patchData, { pluginName: 'code_patcher', durationMs: 30 });
+  assert.ok(termOut.includes('src/app.js'));
+  assert.ok(termOut.includes('DIFF PREVIEW'));
+
+  const mdOut = formatMarkdown(patchData, { pluginName: 'code_patcher', durationMs: 30 });
+  assert.ok(mdOut.includes('# 🛠️ Code Patch Execution Report'));
+  assert.ok(mdOut.includes('src/app.js.20260919.bak'));
+});

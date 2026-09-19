@@ -57,6 +57,9 @@ function diffPreview(original, modified) {
 // OPERATIONS
 // ─────────────────────────────────────────────────────────────────────────────
 export async function execute(args) {
+  if (!args || !args.filePath) {
+    throw new Error('filePath harus diisi.');
+  }
   const filePath  = path.resolve(process.cwd(), args.filePath);
   const op        = (args.operation||'replace').toLowerCase();
   const encoding  = args.encoding || 'utf8';

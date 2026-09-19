@@ -148,9 +148,11 @@ export async function execute(args) {
   if (!content && args.logPath) {
     const fp = path.resolve(process.cwd(), args.logPath);
     try { content = await fs.readFile(fp, 'utf8'); }
-    catch (e) { return { success: false, error: `Cannot read log: ${e.message}` }; }
+    catch (e) { throw new Error(`Cannot read log file "${args.logPath}": ${e.message}`); }
   }
-  if (!content) return { success: false, error: 'Provide logPath or logContent parameter.' };
+  if (!content) {
+    throw new Error('Provide logPath or logContent parameter.');
+  }
 
   const minSev   = args.minSeverity?.toUpperCase() || 'LOW';
   const maxLines  = args.maxEntries || 10000;
@@ -189,6 +191,7 @@ export async function execute(args) {
           ip,
           ts,
           type:     sig.type,
+          category: sig.type,
           mitre:    sig.mitre,
           severity: sig.severity,
           snippet:  raw.length>220 ? raw.slice(0,217)+'…' : raw,
@@ -237,22 +240,32 @@ export async function execute(args) {
 
   const critCount = incidents.filter(i=>i.severity==='CRITICAL').length;
   const highCount = incidents.filter(i=>i.severity==='HIGH').length;
+  const medCount  = incidents.filter(i=>i.severity==='MEDIUM').length;
+  const lowCount  = incidents.filter(i=>i.severity==='LOW').length;
 
   return {
     mode,
+    linesAnalyzed: lines.length,
     linesAnalysed: lines.length,
     totalThreatsFound: incidents.length,
     findingsByCategory: catSummary,
+    summary: {
+      CRITICAL: critCount,
+      HIGH:     highCount,
+      MEDIUM:   medCount,
+      LOW:      lowCount,
+    },
     findingsBySeverity: {
       CRITICAL: critCount,
       HIGH:     highCount,
-      MEDIUM:   incidents.filter(i=>i.severity==='MEDIUM').length,
-      LOW:      incidents.filter(i=>i.severity==='LOW').length,
+      MEDIUM:   medCount,
+      LOW:      lowCount,
     },
     httpStatusCodes:   statusMap,
     suspiciousIPs:     bruteIPs,
     multiStageAttacks: killChain,
     remediationPlaybooks: playbooks,
+    findings: sortedIncidents,
     topIncidents: sortedIncidents,
     verdict: critCount > 0
       ? `🔴 CRITICAL THREAT — ${critCount} critical attack(s) detected. Activate IR plan immediately!`

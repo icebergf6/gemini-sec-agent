@@ -30,6 +30,12 @@ export function loadEnvFile() {
             let val = trimmed.substring(eqIdx + 1).trim();
             if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
               val = val.slice(1, -1);
+            } else {
+              // Strip unquoted inline comments
+              const commentIdx = val.indexOf('#');
+              if (commentIdx !== -1) {
+                val = val.substring(0, commentIdx).trim();
+              }
             }
             if (!process.env[key]) {
               process.env[key] = val;
@@ -91,7 +97,7 @@ class KeyManager {
       const suffix = key.slice(-4);
       return {
         index: idx + 1,
-        masked: `${prefix}...${suffix}`,
+        masked: key.length > 11 ? `${prefix}...${suffix}` : '***HIDDEN***',
         active: isCurrent
       };
     });
@@ -109,11 +115,12 @@ class KeyManager {
 export const keyManager = new KeyManager();
 
 export const config = {
-  defaultModel: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
-  fallbackModels: ['gemini-3.6-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'],
+  defaultModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  fallbackModels: ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'],
   autoRunTools: process.env.AGY_AUTO_RUN_TOOLS !== 'false',
   rootDir,
   pluginsDir: path.join(rootDir, 'plugins'),
   maxToolRecursion: 8,
   timeoutMs: 45000
 };
+
